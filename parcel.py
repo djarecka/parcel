@@ -12,6 +12,15 @@ import pdb
 import subprocess
 parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
 
+from enum import Enum # https://pypi.python.org/pypi/enum34
+
+class Pprof(Enum):
+  hydro_const_rhod = 0, # as in WWG & LPW 2009
+  hydro_const_th_rv = 1, # as in icicle
+  hydro_piecewise_const_th_rv = 2, # better than both above? (not really?) 
+  hydro_old_drops = 3 # as in old parcel model
+  # ... rho or p given as a profile, ...
+
 Chem_ga_id = ["SO2", "H2O2", "O3"]
 Chem_aq_id = Chem_ga_id + ["HSO3"]
 
@@ -121,8 +130,10 @@ def output(fout, opts, micro, bins, state, chem_gas, chem_aq, rec):
   output_save(fout, chem_gas, rec)
 
  
-def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022, outfile="test.nc", 
-  outfreq=100, sd_conc_mean=64, kappa=.5,
+def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022, 
+  outfile="test.nc", 
+  pprof=Pprof.hydro_const_th_rv,
+  outfreq=1, sd_conc_mean=64, kappa=.5,
   mean_r = .04e-6 / 2, stdev  = 1.4, n_tot  = 60e6, 
   radii = 1e-6 * pow(10, -3 + np.arange(26) * .2), 
   SO2_0 = 44, O3_0 = 44, H2O2_0 = 44
@@ -158,8 +169,43 @@ def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022, outfile="test.n
       # - same as in 2D kinematic model
       state["z"] += w * dt
       state["t"] = it * dt
-      state["p"] = common.p_hydro(state["z"], th_0, r_0, 0, p_0)
-      state["rhod"][0] = common.rhod(state["p"], th_0, r_0)
+
+      # pressure
+      if pprof == Pprof.hydro_const_th_rv:
+        state["p"] = common.p_hydro(state["z"], th_0, r_0, 0, p_0)
+
+      elif pprof == Pprof.hydro_const_rhod:
+        rho = 1.13 # kg/m3  1.13 
+        state["p"] -= rho * common.g * w * dt
+
+      elif pprof == Pprof.hydro_piecewise_const_th_rv:
+        state["p"] = common.p_hydro(
+          state["z"], 
+          common.th_dry2std(state["th_d"][0], state["r_v"][0]), 
+          state["r_v"][0], 
+          state["z"]-w*dt, 
+          state["p"]
+        )
+
+      elif pprof == Pprof.hydro_old_drops:
+        state["p"] -= state["rhod"][0] * common.g * w * dt       
+
+      else: assert(False)
+
+      # dry air density
+      if pprof == Pprof.hydro_const_th_rv:
+        state["rhod"][0] = common.rhod(state["p"], th_0, r_0)
+      else:
+        state["rhod"][0] = common.rhod(
+          state["p"], 
+          common.th_dry2std(state["th_d"][0], state["r_v"][0]), 
+          state["r_v"][0]
+        )
+        assert np.isclose(common.p(
+          state["rhod"][0],
+          state["r_v"][0],
+          common.T(state["th_d"][0], state["rhod"][0])
+        ), state["p"])
 
       # microphysics
       micro_step(micro, state, info, chem_gas)
