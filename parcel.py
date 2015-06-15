@@ -12,7 +12,7 @@ import pdb
 import subprocess
 parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
 
-from enum import Enum # https://pypi.python.org/pypi/enum34
+#from enum import Enum # https://pypi.python.org/pypi/enum34
 
 #class Pprof(Enum):
 #  hydro_const_rhod = 0, # as in WWG & LPW 2009
