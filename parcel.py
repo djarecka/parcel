@@ -14,11 +14,11 @@ parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
 
 from enum import Enum # https://pypi.python.org/pypi/enum34
 
-class Pprof(Enum):
-  hydro_const_rhod = 0, # as in WWG & LPW 2009
-  hydro_const_th_rv = 1, # as in icicle
-  hydro_piecewise_const_th_rv = 2, # better than both above? (not really?) 
-  hydro_old_drops = 3 # as in old parcel model
+#class Pprof(Enum):
+#  hydro_const_rhod = 0, # as in WWG & LPW 2009
+#  hydro_const_th_rv = 1, # as in icicle
+#  hydro_piecewise_const_th_rv = 2, # better than both above? (not really?) 
+#  hydro_old_drops = 3 # as in old parcel model
   # ... rho or p given as a profile, ...
 
 Chem_ga_id = ["SO2", "H2O2", "O3"]
@@ -132,7 +132,7 @@ def output(fout, opts, micro, bins, state, chem_gas, chem_aq, rec):
  
 def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022, 
   outfile="test.nc", 
-  pprof=Pprof.hydro_const_th_rv,
+  pprof="Pprof_hydro_const_th_rv",
   outfreq=1, sd_conc_mean=64, kappa=.5,
   mean_r = .04e-6 / 2, stdev  = 1.4, n_tot  = 60e6, 
   radii = 1e-6 * pow(10, -3 + np.arange(26) * .2), 
@@ -171,14 +171,14 @@ def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022,
       state["t"] = it * dt
 
       # pressure
-      if pprof == Pprof.hydro_const_th_rv:
+      if pprof == "Pprof_hydro_const_th_rv":
         state["p"] = common.p_hydro(state["z"], th_0, r_0, 0, p_0)
 
-      elif pprof == Pprof.hydro_const_rhod:
+      elif pprof == "Pprof_hydro_const_rhod":
         rho = 1.13 # kg/m3  1.13 
         state["p"] -= rho * common.g * w * dt
 
-      elif pprof == Pprof.hydro_piecewise_const_th_rv:
+      elif pprof == "Pprof_hydro_piecewise_const_th_rv":
         state["p"] = common.p_hydro(
           state["z"], 
           common.th_dry2std(state["th_d"][0], state["r_v"][0]), 
@@ -187,13 +187,13 @@ def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022,
           state["p"]
         )
 
-      elif pprof == Pprof.hydro_old_drops:
+      elif pprof == "Pprof_hydro_old_drops":
         state["p"] -= state["rhod"][0] * common.g * w * dt       
 
       else: assert(False)
 
       # dry air density
-      if pprof == Pprof.hydro_const_th_rv:
+      if pprof == "Pprof_hydro_const_th_rv":
         state["rhod"][0] = common.rhod(state["p"], th_0, r_0)
       else:
         state["rhod"][0] = common.rhod(
