@@ -3,6 +3,7 @@ sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 from libcloudphxx import common
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 from scipy.io import netcdf
 from parcel import parcel
 import numpy as np
@@ -30,9 +31,17 @@ def test_pressure(dt):
       "piecewise" : "r.-",
       "drops"     : "m.-"
     }
+    
+    descr = {
+      "WWG-LPW"   : "const_rhod",
+      "icicle"    : "const_th_rv",
+      "piecewise" : "pieceswise_cons_th_rv",
+      "drops"     : "old_drops:const_rhod??"
+    }
 
     plt.figure(1, figsize=(18,10))
     plots = []
+    legend_l = []
 
     for i in range(6):
       plots.append(plt.subplot(2,3,i+1))
@@ -64,6 +73,8 @@ def test_pressure(dt):
 	f.variables["RH"][:]                     , z, style[i], 
 	[f.variables["RH"][:].max()] * z.shape[0], z, style[i]
       )
+      legend_l.append(descr[i])
+    plots[0].legend(legend_l, loc=1, prop = FontProperties(size=10)) 
     plt.show()
     plt.savefig("plot.pdf")
 
