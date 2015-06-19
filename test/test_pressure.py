@@ -75,8 +75,8 @@ def test_pressure(dt):
       )
       legend_l.append(descr[i])
     plots[0].legend(legend_l, loc=1, prop = FontProperties(size=10)) 
+    plt.savefig("plot_old.pdf")
     plt.show()
-    plt.savefig("plot.pdf")
 
     # ... and checking wheather those four different methods dont differ too much
     z_all = p_all = thd_all = T_all = rhod_all = rv_all = RH_max = [] 
