@@ -174,9 +174,19 @@ def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022,
       if pprof == "Pprof_hydro_const_th_rv":
         state["p"] = common.p_hydro(state["z"], th_0, r_0, 0, p_0)
 
+      elif pprof == "Rhoprof_hydro_const_th_rv":
+        p_hydro = common.p_hydro(state["z"], th_0, r_0, 0, p_0)
+
       elif pprof == "Pprof_hydro_const_rhod":
         rho = 1.13 # kg/m3  1.13 
         state["p"] -= rho * common.g * w * dt
+
+      elif pprof == "Rhoprof_hydro_const_rhod":
+        rho = 1.13 # kg/m3  1.13
+        if 'p_hydro' in locals():
+          p_hydro -= rho * common.g * w * dt
+        else:
+          p_hydro = p_0
 
       elif pprof == "Pprof_hydro_piecewise_const_th_rv":
         state["p"] = common.p_hydro(
@@ -193,8 +203,13 @@ def parcel(dt=.1, z_max=200, w=1, T_0=300, p_0=101300, r_0=.022,
       else: assert(False)
 
       # dry air density
-      if pprof == "Pprof_hydro_const_th_rv":
-        state["rhod"][0] = common.rhod(state["p"], th_0, r_0)
+      if pprof in ["Rhoprof_hydro_const_th_rv", "Rhoprof_hydro_const_rhod"]:
+        state["rhod"][0] = common.rhod(p_hydro, th_0, r_0)
+        state["p"] = common.p(
+          state["rhod"][0],
+          state["r_v"][0],
+          common.T(state["th_d"][0], state["rhod"][0])
+          )
       else:
         state["rhod"][0] = common.rhod(
           state["p"], 
