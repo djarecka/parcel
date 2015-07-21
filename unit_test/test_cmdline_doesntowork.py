@@ -12,7 +12,7 @@ import pytest
                                 {"SO2_g_0" : 0., "O3_g_0" : 0., "H2O2_g_0" : 0.},
                                 {"gstdev" : 1.1}, 
                                 {"outfreq" : 2},
-                                {"out_bin" : ["radii:0/1/1/lin/wet/3", "chem:0/1/1/lin/wet/O3_a,H2O2_a,SO2_a"], "chem_dsl" : True} 
+                                {"out_bin" : ["radii:0/1/1/lin/wet/3"]} 
                                 ])
 
 def test_cmdline(tmpdir, arg):
