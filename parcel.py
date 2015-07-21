@@ -169,7 +169,6 @@ def _output_bins(fout, t, micro, opts):
             # calculate chemistry
             micro.diag_chem(_Chem_a_id[match])
             fout.variables[dim+'_'+match][t, b] = np.frombuffer(micro.outbuf())
-                      
 
 def _output_init(micro, opts):
   # file & dimensions
@@ -241,8 +240,12 @@ def _output_save(fout, state, rec):
 
 def _save_attrs(fout, dictnr):
   for var, val in dictnr.iteritems():
-    setattr(fout, var, val)
-
+    if var == 'out_bin' and len(val)>1:
+      for i,v in enumerate(val):
+        setattr(fout, var+str(i), v)
+    else:
+      setattr(fout, var, val)
+    
 def _output(fout, opts, micro, state, rec):
   _output_bins(fout, rec, micro, opts)
   _output_save(fout, state, rec)
@@ -331,8 +334,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
       state.update({ "SO2_a" : 0.,      "O3_a" : 0.,     "H2O2_a" : 0.       })
 
     # t=0 : init & save
-    _output(fout, opts, micro, state, 0)
 
+    _output(fout, opts, micro, state, 0)
     # timestepping
     for it in range(1,nt+1):
       # diagnostics
@@ -384,10 +387,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
       if (it % outfreq == 0): 
         rec = it/outfreq
         _output(fout, opts, micro, state, rec)
- 
     _save_attrs(fout, info)
     _save_attrs(fout, opts)
-
     
 def _arguments_checking(args):
   if (args["gstdev"] == 1): raise Exception("standar deviation should be != 1 to avoid monodisperse distribution")
