@@ -176,9 +176,9 @@ def _output_init(micro, opts):
   fout.createDimension('t', None)
   #pdb.set_trace()
   for el in opts["out_bin_dir"]:
-    pdb.set_trace()
+    #pdb.set_trace()
     if el["drwt"] not in ['dry', 'wet']:
-      pdb.set_trace()
+      #pdb.set_trace()
       raise exception('radius type can be either dry or wet')
     fout.createDimension(el["type"], el["nbin"]) 
 
@@ -233,9 +233,16 @@ def _output_save(fout, state, rec):
 
 def _save_attrs(fout, dictnr):
   for var, val in dictnr.iteritems():
-    if var == 'out_bin' and len(val)>1:
+    #pdb.set_trace()
+
+    if var in ['out_bin'] and len(val)>1:
       for i,v in enumerate(val):
         setattr(fout, var+str(i), v)
+      #pdb.set_trace()
+    elif var in ['out_bin_dir'] :
+      for i,v in enumerate(val):
+        setattr(fout, var+str(i), str(v))
+
     else:
       setattr(fout, var, val)
     
@@ -319,7 +326,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   info = { "RH_max" : 0, "libcloud_Git_revision" : libcloud_version, 
            "parcel_Git_revision" : parcel_version }
 
-  pdb.set_trace()
+  #pdb.set_trace()
 
   micro = _micro_init(opts, state, info)
   with _output_init(micro, opts) as fout:
