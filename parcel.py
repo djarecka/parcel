@@ -135,40 +135,32 @@ def _stats(state, info):
   info["RH_max"] = max(info["RH_max"], state["RH"])
 
 def _output_bins(fout, t, micro, opts):
-  for dim, nbin in fout.dimensions.iteritems():
-    if (dim == 't'): continue
-    for b in range(nbin):
-      drwt = 'wet' if dim+"_r_wet" in fout.variables else 'dry'
-      if drwt == 'wet':
-	micro.diag_wet_rng(
-	  fout.variables[dim+"_r_wet"][b],
-	  fout.variables[dim+"_r_wet"][b] + fout.variables[dim+"_dr_wet"][b]
-	)
-      elif drwt == 'dry':
-	micro.diag_dry_rng(
-	  fout.variables[dim+"_r_dry"][b],
-	  fout.variables[dim+"_r_dry"][b] + fout.variables[dim+"_dr_dry"][b]
-	)
-      else: assert False
-       
-      for v in fout.variables.iterkeys():
-        if v.startswith(dim+"_"):
-          match = re.search('^'+dim+'_(\w+)$', v).groups()[0]
-          if match in ['dr_wet', 'r_wet', 'dr_dry', 'r_dry']:
-            pass
-          elif match.startswith('m'):
-            # calculating moments (they all have to start with m)
-            mom = int(match[1:])
-            if drwt == 'wet':
-	      micro.diag_wet_mom(mom)
-            elif drwt == 'dry':
-	      micro.diag_dry_mom(mom)
-            else: assert False
-            fout.variables[dim+'_'+match][t, b] = np.frombuffer(micro.outbuf())
-          else:
+    for el in opts["out_bin_dir"]:
+         for bin in range(el["nbin"]):
+             if el["drwt"] == 'wet':
+                 micro.diag_wet_rng(
+                   fout.variables[el["name"]+"_r_wet"][bin],
+                   fout.variables[el["name"]+"_r_wet"][bin] + fout.variables[el["name"]+"_dr_wet"][bin]
+                   )
+                 for mom in el["moms"]:
+                     micro.diag_wet_mom(mom)
+                     fout.variables[el["name"]+'_m'+str(mom)][t, bin] = np.frombuffer(micro.outbuf())
+    
+             elif el["drwt"] == 'dry':
+                 micro.diag_dry_rng(
+                   fout.variables[el["name"]+"_r_dry"][bin],
+                   fout.variables[el["name"]+"_r_dry"][bin] + fout.variables[el["name"]+"_dr_dry"][bin]
+                   )
+                 for mom in el["moms"]:
+                     micro.diag_dry_mom(mom)
+                     fout.variables[el["name"]+'_m'+str(mom)][t, bin] = np.frombuffer(micro.outbuf())
+
+             
+             
+             #TODO
             # calculate chemistry
-            micro.diag_chem(_Chem_a_id[match])
-            fout.variables[dim+'_'+match][t, b] = np.frombuffer(micro.outbuf())
+            #micro.diag_chem(_Chem_a_id[match])
+            #fout.variables[dim+'_'+match][t, b] = np.frombuffer(micro.outbuf())
                       
 
 def _output_init(micro, opts):
@@ -207,7 +199,6 @@ def _output_init(micro, opts):
       	fout.createVariable(el["name"]+'_'+str(mom), 'd', ('t',el["name"]))
       	fout.variables[el["name"]+'_'+str(mom)].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
       else:
-        #assert(str(int(mom))==mom) #can I remove? TODO
 	fout.createVariable(el["name"]+'_m'+str(mom), 'd', ('t',el["name"]))
 	fout.variables[el["name"]+'_m'+str(mom)].unit = 'm^'+str(mom)+' (kg of dry air)^-1'
   
@@ -256,7 +247,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   outfreq=100, sd_conc=64., kappa=.5,
   mean_r = .04e-6 / 2, gstdev  = 1.4, n_tot  = 60.e6, 
   out_bin = ["radii:1e-9/1e-4/26/log/wet/0"], 
-  out_bin_dir = [{"name" : "radii", "left" :  1.e-9, "rght" : 1.e-4 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}],
+  out_bin_dir = [{"name" : "radii", "left" :  1.e-9, "rght" : 1.e-4 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}, {"name" : "radii1", "left" :  0, "rght" : 1.e-7 , "nbin" : 26,"lnli": "lin", "drwt" : "dry", "moms" : [0,2]}],
   SO2_g_0 = 0., O3_g_0 = 0., H2O2_g_0 = 0.,
   chem_sys = 'open',
   chem_dsl = False, chem_dsc = False, chem_rct = False, 
@@ -391,6 +382,11 @@ def _arguments_checking(args):
   if (args["r_0"] < 0): raise Exception("water vapour should be larger than 0")
   if (args["w"] < 0): raise Exception("vertical velocity should be larger than 0")
   if (args["kappa"] <= 0): raise Exception("kappa hygroscopicity parameter should be larger than 0 ")
+  #TODO including more checks
+  for el in args["out_bin_dir"]:
+    for ar in ["name", "drwt"]: 
+      if (ar not in el.keys()): raise Exception(" out_bins_dir has to contain " + ar)
+    if (el["drwt"] not in ["dry", "wet"]): raise Exception("drwt in out_bins_dir has to be dry or wet")
 
 # ensuring that pure "import parcel" does not trigger any simulation
 if __name__ == '__main__':
