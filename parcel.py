@@ -176,7 +176,9 @@ def _output_init(micro, opts):
   fout.createDimension('t', None)
   #pdb.set_trace()
   for el in opts["out_bin_dir"]:
+    pdb.set_trace()
     if el["drwt"] not in ['dry', 'wet']:
+      pdb.set_trace()
       raise exception('radius type can be either dry or wet')
     fout.createDimension(el["type"], el["nbin"]) 
 
@@ -317,6 +319,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   info = { "RH_max" : 0, "libcloud_Git_revision" : libcloud_version, 
            "parcel_Git_revision" : parcel_version }
 
+  pdb.set_trace()
+
   micro = _micro_init(opts, state, info)
   with _output_init(micro, opts) as fout:
 
@@ -395,15 +399,21 @@ if __name__ == '__main__':
   name, _, _, dflt = inspect.getargspec(parcel)
   opts = dict(zip(name[-len(dflt):], dflt))
 
+  import json
   # handling all parcel() arguments as command-line arguments
   prsr = ArgumentParser(add_help=True, description=parcel.__doc__, formatter_class=RawTextHelpFormatter)
   for k in opts:
-    prsr.add_argument('--' + k, 
-      default=opts[k], 
-      help = "(default: %(default)s)",
-      type = (type(opts[k]) if type(opts[k]) != list else type(opts[k][0])),
-      nargs = ('?'          if type(opts[k]) != list else '+')
-    )
+    if k=="out_bin_dir":
+      
+      prsr.add_argument('--' + k,default=opts[k], help="n", type=json.loads, nargs=("+"))
+      #pdb.set_trace()
+    else:
+      prsr.add_argument('--' + k, 
+                        default=opts[k], 
+                        help = "(default: %(default)s)",
+                        type = (type(opts[k]) if type(opts[k]) != list else type(opts[k][0])),
+                        nargs = ('?'          if type(opts[k]) != list else '+')
+                        )
   args = vars(prsr.parse_args())
 
   # executing parcel() with command-line arguments unpacked - treated as keyword arguments 
