@@ -15,7 +15,7 @@ assert StrictVersion(scipy_version) >= StrictVersion("0.13"), "see https://githu
 from scipy.io import netcdf
 import re, inspect, numpy as np
 import pdb
-
+import json
 import subprocess
 parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
 
@@ -175,50 +175,41 @@ def _output_init(micro, opts):
   # file & dimensions
   fout = netcdf.netcdf_file(opts["outfile"], 'w')
   fout.createDimension('t', None)
-  for e in opts["out_bin"]:
-    (
-      name   ,left      ,rght      ,nbin   ,lnli ,drwt  ,moms 
-    ) = [t(s) for t,s in zip((
-      str    ,float     ,float     ,int    ,str  ,str   ,str
-    ),re.search(
-      '^(\w+):([\d.e-]+)/([\d.e-]+)/([\d]+)/(\w+)/(\w+)/([\d,\w]+)$', 
-      e
-    ).groups())]
-    assert '_' not in name
-    if drwt not in ['dry', 'wet']:
+  for el in opts["out_bin_dir"]:
+    if el["drwt"] not in ['dry', 'wet']: #TODO wywalic
       raise exception('radius type can be either dry or wet')
-    fout.createDimension(name, nbin) 
+    fout.createDimension(el["name"], el["nbin"]) 
 
-    tmp = name + '_r_' + drwt
-    fout.createVariable(tmp, 'd', (name,))
+    tmp = el["name"] + '_r_' + el["drwt"]
+    fout.createVariable(tmp, 'd', (el["name"],))
     fout.variables[tmp].unit = "m"
     fout.variables[tmp].description = "particle wet radius (left bin edge)"
 
-    tmp = name + '_dr_' + drwt
-    fout.createVariable(tmp, 'd', (name,))
+    tmp = el["name"] + '_dr_' + el["drwt"]
+    fout.createVariable(tmp, 'd', (el["name"],))
     fout.variables[tmp].unit = "m"
     fout.variables[tmp].description = "bin width"
     
-    if lnli == 'log':
+    if el["lnli"] == 'log':
       from math import exp, log
-      dlnr = (log(rght) - log(left)) / nbin
-      allbins = np.exp(log(left) + np.arange(nbin+1) * dlnr)
-      fout.variables[name+'_r_'+drwt][:] = allbins[0:-1]
-      fout.variables[name+'_dr_'+drwt][:] = allbins[1:] - allbins[0:-1]
-    elif lnli == 'lin':
-      dr = (rght - left) / nbin
-      fout.variables[name+'_r_'+drwt][:] = left + np.arange(nbin) * dr
-      fout.variables[name+'_dr_'+drwt][:] = dr
+      dlnr = (log(el["rght"]) - log(el["left"])) / el["nbin"]
+      allbins = np.exp(log(el["left"]) + np.arange(el["nbin"]+1) * dlnr)
+      fout.variables[el["name"]+'_r_'+el["drwt"]][:] = allbins[0:-1]
+      fout.variables[el["name"]+'_dr_'+el["drwt"]][:] = allbins[1:] - allbins[0:-1]
+    elif el["lnli"] == 'lin':
+      dr = (el["rght"] - el["left"]) / el["nbin"]
+      fout.variables[el["name"]+'_r_'+el["drwt"]][:] = el["left"] + np.arange(el["nbin"]) * dr
+      fout.variables[el["name"]+'_dr_'+el["drwt"]][:] = dr
     else:
       raise exception('scale type can be either log or lin')
-    for m in moms.split(','):
-      if (m in _Chem_a_id):
-      	fout.createVariable(name+'_'+m, 'd', ('t',name))
-      	fout.variables[name+'_'+m].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
+    for mom in el["moms"]:
+      if (mom in _Chem_a_id):
+      	fout.createVariable(el["name"]+'_'+str(mom), 'd', ('t',el["name"]))
+      	fout.variables[el["name"]+'_'+str(mom)].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
       else:
-        assert(str(int(m))==m)
-	fout.createVariable(name+'_m'+m, 'd', ('t',name))
-	fout.variables[name+'_m'+m].unit = 'm^'+m+' (kg of dry air)^-1'
+        #assert(str(int(mom))==mom) #can I remove? TODO
+	fout.createVariable(el["name"]+'_m'+str(mom), 'd', ('t',el["name"]))
+	fout.variables[el["name"]+'_m'+str(mom)].unit = 'm^'+str(mom)+' (kg of dry air)^-1'
   
   units = {"z" : "m",  "t" : "s", "r_v" : "kg/kg", "th_d" : "K", "rhod" : "kg/m3", 
            "p" : "Pa", "T" : "K", "RH"  : "1"
@@ -229,9 +220,9 @@ def _output_init(micro, opts):
       units[id_str] = "gas volume concentration (mole fraction) [1]"
       units[id_str.replace('_g', '_a')] = "kg of chem species dissolved in cloud droplets (kg of dry air)^-1"
 
-  for name, unit in units.iteritems():
-    fout.createVariable(name, 'd', ('t',))
-    fout.variables[name].unit = unit
+  for val, unit in units.iteritems():
+    fout.createVariable(val, 'd', ('t',))
+    fout.variables[val].unit = unit
   
   return fout
 
@@ -241,9 +232,9 @@ def _output_save(fout, state, rec):
 
 def _save_attrs(fout, dictnr):
   for var, val in dictnr.iteritems():
-    if var == 'out_bin' and len(val)>1:
+    if var in ['out_bin', 'out_bin_dir'] and len(val)>1:
       for i,v in enumerate(val):
-        setattr(fout, var + "_" + str(i), v)
+        setattr(fout, var + "_" + str(i), str(v))
     else:
       setattr(fout, var, val)
 
@@ -265,6 +256,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   outfreq=100, sd_conc=64., kappa=.5,
   mean_r = .04e-6 / 2, gstdev  = 1.4, n_tot  = 60.e6, 
   out_bin = ["radii:1e-9/1e-4/26/log/wet/0"], 
+  out_bin_dir = [{"name" : "radii", "left" :  1.e-9, "rght" : 1.e-4 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}],
   SO2_g_0 = 0., O3_g_0 = 0., H2O2_g_0 = 0.,
   chem_sys = 'open',
   chem_dsl = False, chem_dsc = False, chem_rct = False, 
@@ -410,12 +402,15 @@ if __name__ == '__main__':
   # handling all parcel() arguments as command-line arguments
   prsr = ArgumentParser(add_help=True, description=parcel.__doc__, formatter_class=RawTextHelpFormatter)
   for k in opts:
-    prsr.add_argument('--' + k, 
-      default=opts[k], 
-      help = "(default: %(default)s)",
-      type = (type(opts[k]) if type(opts[k]) != list else type(opts[k][0])),
-      nargs = ('?'          if type(opts[k]) != list else '+')
-    )
+    if k=="out_bin_dir":
+      prsr.add_argument('--' + k,default=opts[k], help="n", type=json.loads, nargs=("+"))
+    else:
+      prsr.add_argument('--' + k, 
+             default=opts[k], 
+             help = "(default: %(default)s)",
+             type = (type(opts[k]) if type(opts[k]) != list else type(opts[k][0])),
+             nargs = ('?'          if type(opts[k]) != list else '+')
+                        )
   args = vars(prsr.parse_args())
 
   # executing parcel() with command-line arguments unpacked - treated as keyword arguments 
