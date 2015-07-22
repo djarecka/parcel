@@ -174,50 +174,42 @@ def _output_init(micro, opts):
   # file & dimensions
   fout = netcdf.netcdf_file(opts["outfile"], 'w')
   fout.createDimension('t', None)
-  for e in opts["out_bin"]:
-    (
-      name   ,left      ,rght      ,nbin   ,lnli ,drwt  ,moms 
-    ) = [t(s) for t,s in zip((
-      str    ,float     ,float     ,int    ,str  ,str   ,str
-    ),re.search(
-      '^(\w+):([\d.e-]+)/([\d.e-]+)/([\d]+)/(\w+)/(\w+)/([\d,\w]+)$', 
-      e
-    ).groups())]
-    assert '_' not in name
-    if drwt not in ['dry', 'wet']:
+  #pdb.set_trace()
+  for el in opts["out_bin_dir"]:
+    if el["drwt"] not in ['dry', 'wet']:
       raise exception('radius type can be either dry or wet')
-    fout.createDimension(name, nbin) 
+    fout.createDimension(el["type"], el["nbin"]) 
 
-    tmp = name + '_r_' + drwt
-    fout.createVariable(tmp, 'd', (name,))
+    tmp = el["type"] + '_r_' + el["drwt"]
+    fout.createVariable(tmp, 'd', (el["type"],))
     fout.variables[tmp].unit = "m"
     fout.variables[tmp].description = "particle wet radius (left bin edge)"
 
-    tmp = name + '_dr_' + drwt
-    fout.createVariable(tmp, 'd', (name,))
+    tmp = el["type"] + '_dr_' + el["drwt"]
+    fout.createVariable(tmp, 'd', (el["type"],))
     fout.variables[tmp].unit = "m"
     fout.variables[tmp].description = "bin width"
     
-    if lnli == 'log':
+    if el["lnli"] == 'log':
       from math import exp, log
-      dlnr = (log(rght) - log(left)) / nbin
-      allbins = np.exp(log(left) + np.arange(nbin+1) * dlnr)
-      fout.variables[name+'_r_'+drwt][:] = allbins[0:-1]
-      fout.variables[name+'_dr_'+drwt][:] = allbins[1:] - allbins[0:-1]
-    elif lnli == 'lin':
-      dr = (rght - left) / nbin
-      fout.variables[name+'_r_'+drwt][:] = left + np.arange(nbin) * dr
-      fout.variables[name+'_dr_'+drwt][:] = dr
+      dlnr = (log(el["rght"]) - log(el["left"])) / el["nbin"]
+      allbins = np.exp(log(el["left"]) + np.arange(el["nbin"]+1) * dlnr)
+      fout.variables[el["type"]+'_r_'+el["drwt"]][:] = allbins[0:-1]
+      fout.variables[el["type"]+'_dr_'+el["drwt"]][:] = allbins[1:] - allbins[0:-1]
+    elif el["lnli"] == 'lin':
+      dr = (el["rght"] - el["left"]) / el["nbin"]
+      fout.variables[el["type"]+'_r_'+el["drwt"]][:] = el["left"] + np.arange(el["nbin"]) * dr
+      fout.variables[el["type"]+'_dr_'+el["drwt"]][:] = dr
     else:
       raise exception('scale type can be either log or lin')
-    for m in moms.split(','):
+    for m in el["moms"]:
       if (m in _Chem_a_id):
-      	fout.createVariable(name+'_'+m, 'd', ('t',name))
-      	fout.variables[name+'_'+m].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
+      	fout.createVariable(el["type"]+'_'+m, 'd', ('t',el["type"]))
+      	fout.variables[el["type"]+'_'+m].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
       else:
-        assert(str(int(m))==m)
-	fout.createVariable(name+'_m'+m, 'd', ('t',name))
-	fout.variables[name+'_m'+m].unit = 'm^'+m+' (kg of dry air)^-1'
+        #assert(str(int(m))==m) #can I remove?
+	fout.createVariable(el["type"]+'_m'+str(m), 'd', ('t',el["type"]))
+	fout.variables[el["type"]+'_m'+str(m)].unit = 'm^'+str(m)+' (kg of dry air)^-1'
   
   units = {"z" : "m",  "t" : "s", "r_v" : "kg/kg", "th_d" : "K", "rhod" : "kg/m3", 
            "p" : "Pa", "T" : "K", "RH"  : "1"
@@ -231,7 +223,6 @@ def _output_init(micro, opts):
   for name, unit in units.iteritems():
     fout.createVariable(name, 'd', ('t',))
     fout.variables[name].unit = unit
-  
   return fout
 
 def _output_save(fout, state, rec):
@@ -264,6 +255,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   outfreq=100, sd_conc=64., kappa=.5,
   mean_r = .04e-6 / 2, gstdev  = 1.4, n_tot  = 60.e6, 
   out_bin = ["radii:1e-9/1e-4/26/log/wet/0"], 
+  out_bin_dir = [{"type" : "radii", "left" :  1.e-9, "rght" : 1.e-4 , "nbin" : 26, "lnli": "log", "drwt" : "wet", "moms" : [0]}],
   SO2_g_0 = 0., O3_g_0 = 0., H2O2_g_0 = 0.,
   chem_sys = 'open',
   chem_dsl = False, chem_dsc = False, chem_rct = False, #TODO what if chem = false
@@ -313,7 +305,6 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
   # packing function arguments into "opts" dictionary
   args, _, _, _ = inspect.getargvalues(inspect.currentframe())
   opts = dict(zip(args, [locals()[k] for k in args]))
-
   th_0 = T_0 * (common.p_1000 / p_0)**(common.R_d / common.c_pd)
   nt = int(z_max / (w * dt))
   state = {
@@ -328,6 +319,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
 
   micro = _micro_init(opts, state, info)
   with _output_init(micro, opts) as fout:
+
     # adding chem state vars
     if micro.opts_init.chem_switch:
       state.update({ "SO2_g" : SO2_g_0, "O3_g" : O3_g_0, "H2O2_g" : H2O2_g_0 })
@@ -376,7 +368,6 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300., r_0=.022,
           common.th_dry2std(state["th_d"][0], state["r_v"][0]), 
           state["r_v"][0]
         )
-
       # microphysics
       _micro_step(micro, state, info, opts, it)
 

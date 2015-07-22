@@ -11,7 +11,8 @@ import pytest
                                 {"sd_conc" : 32., "kappa" : 1.}, 
                                 {"SO2_g_0" : 0., "O3_g_0" : 0., "H2O2_g_0" : 0.},
                                 {"gstdev" : 1.1}, 
-                                {"outfreq" : 2} 
+                                {"outfreq" : 2},
+                                {"out_bin_dir" : [{"type" : "radii", "left" :  1.e-9, "rght" : 1.e-4 , "nbin" : 26, "lnli": "log", "drwt" : "wet", "moms" : [0]}]}
                                 ])
 
 def test_cmdline(tmpdir, arg):
@@ -27,6 +28,5 @@ def test_cmdline(tmpdir, arg):
   for key, value in arg.items():
     list_arg.append("--" + key + "=" + str(value))
   subprocess.check_call(list_arg)
-
   # comparing if the output is the same
   subprocess.check_call(["diff", file, str(tmpdir.join("test_pyt.nc"))])
