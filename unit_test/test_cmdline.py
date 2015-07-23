@@ -3,7 +3,6 @@ sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 import parcel as pc
 import pytest
-import json
 from scipy.io import netcdf
 
 
@@ -49,7 +48,7 @@ def test_cmdline(tmpdir, arg):
 # very simple test, not sure how to write betterr...
 def test_cmdline_outbindir(tmpdir):
   arg_fun = [{"name" : "radii", "left" : 1e-9, "rght": 1e-4, "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}]
-  arg_cml = json.dumps(json.loads('{"name" : "radii", "left" : 0.000000001, "rght": 0.0001 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}'))
+  arg_cml = '{"name" : "radii", "left" : 0.000000001, "rght": 0.0001 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}'
 
   # calling from Python                                                                
   file = str(tmpdir.join("test.nc"))
