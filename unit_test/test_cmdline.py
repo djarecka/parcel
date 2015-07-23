@@ -3,6 +3,9 @@ sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 import parcel as pc
 import pytest
+import json
+from scipy.io import netcdf
+
 
 # examples of usage, type of value should be float (??todo??)
 @pytest.mark.parametrize("arg",[{"r_0" : 0.01, "T_0" : 298., "z_max" : 300.}, 
@@ -42,3 +45,22 @@ def test_cmdline(tmpdir, arg):
 
   # comparing if the output is the same
   subprocess.check_call(["diff", file, str(tmpdir.join("test_pyt.nc"))])
+
+# very simple test, not sure how to write betterr...
+def test_cmdline_outbindir(tmpdir):
+  arg_fun = [{"name" : "radii", "left" : 1e-9, "rght": 1e-4, "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}]
+  arg_cml = json.dumps(json.loads('{"name" : "radii", "left" : 0.000000001, "rght": 0.0001 , "nbin" : 26,"lnli": "log", "drwt" : "wet", "moms" : [0]}'))
+
+  # calling from Python                                                                
+  file = str(tmpdir.join("test.nc"))
+  pc.parcel(outfile=file, out_bin_dir=arg_fun)
+  # renaming the output file                                                              
+  subprocess.call(["mv", file, str(tmpdir.join("test_pyt.nc"))])
+  # calling via subprocess
+
+  subprocess.check_call(["python", "parcel.py", "--outfile="+file, "--out_bin_dir", arg_cml])
+  f_cml  = netcdf.netcdf_file(file)
+  f_fun = netcdf.netcdf_file(str(tmpdir.join("test_pyt.nc")))
+  for var in f_cml.variables:
+    assert (f_cml.variables[var][:] == f_fun.variables[var][:]).all()
+
