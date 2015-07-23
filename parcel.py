@@ -383,7 +383,10 @@ def _arguments_checking(args):
   if (args["w"] < 0): raise Exception("vertical velocity should be larger than 0")
   if (args["kappa"] <= 0): raise Exception("kappa hygroscopicity parameter should be larger than 0 ")
   #TODO including more checks
+  name_l = []
   for el in args["out_bin_dir"]:
+    if (el["name"] in name_l): raise Exception("names in out_bin have to be unique!!! ")
+    name_l.append(el["name"])
     for ar in ["name", "drwt"]: 
       if (ar not in el.keys()): raise Exception(" out_bins_dir has to contain " + ar)
     if (el["drwt"] not in ["dry", "wet"]): raise Exception("drwt in out_bins_dir has to be dry or wet")
