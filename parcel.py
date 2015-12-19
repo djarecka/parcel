@@ -66,13 +66,11 @@ def _micro_init(opts, state, info):
 
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()  
-  for opt in ["dt",]:  
+  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond"]:  
     setattr(opts_init, opt, opts[opt])
-  opts_init.sd_conc     = opts["sd_conc"]
+
   opts_init.n_sd_max    = opts_init.sd_conc
   opts_init.dry_distros = {opts["kappa"]:lognormal}
-  opts_init.chem_rho    = opts["chem_rho"]
-  opts_init.sstp_cond   = opts["sstp_cond"]
   
   # switch off sedimentation and collisions
   opts_init.sedi_switch = False

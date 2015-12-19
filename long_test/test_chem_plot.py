@@ -68,7 +68,7 @@ def data(request):
            SO2_g=0, O3_g=0, H2O2_g=0, out_bin = out_bin, sd_conc = sd_conc)
 
     # TODO - why do I have to repeat this import here?
-    from scipy.io import netcdf
+#    from scipy.io import netcdf
 
     data = {'open'   : netcdf.netcdf_file("test_plot_chem_open.nc",   "r"),\
             'closed' : netcdf.netcdf_file("test_plot_chem_closed.nc", "r"),\

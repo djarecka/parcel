@@ -14,9 +14,7 @@ import pprint
 from parcel import parcel
 from libcloudphxx import common as cm
 from chemical_plot import plot_chem
-from kreidenweis import plot_fig1
-from kreidenweis import plot_fig2
-from kreidenweis import plot_fig3
+from kreidenweis import plot_fig1, plot_fig2, plot_fig3
 from functions import *
 from chem_conditions import *
 
